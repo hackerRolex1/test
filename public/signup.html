@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      max-width: 400px;
+      padding: 40px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+      font-size: 28px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      font-weight: 500;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 5px;
+      font-size: 14px;
+      transition: border-color 0.3s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+    }
+
+    .message {
+      margin-top: 20px;
+      padding: 12px;
+      border-radius: 5px;
+      text-align: center;
+      display: none;
+    }
+
+    .message.success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .message.error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .login-link {
+      text-align: center;
+      margin-top: 20px;
+      color: #666;
+    }
+
+    .login-link a {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .login-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Sign Up</h1>
+    <form id="signupForm">
+      <div class="form-group">
+        <label for="fullname">Full Name</label>
+        <input type="text" id="fullname" name="fullname" required placeholder="Enter your full name">
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required placeholder="Enter your email">
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required placeholder="Enter your password">
+      </div>
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Confirm your password">
+      </div>
+      <button type="submit">Sign Up</button>
+    </form>
+
+    <div id="message" class="message"></div>
+
+    <div class="login-link">
+      Already have an account? <a href="/login">Login</a>
+    </div>
+  </div>
+
+  <script>
+    // Pre-fill email if redirected from login
+    window.addEventListener('load', () => {
+      const signupEmail = localStorage.getItem('signupEmail');
+      if (signupEmail) {
+        document.getElementById('email').value = signupEmail;
+        localStorage.removeItem('signupEmail');
+        checkEmailExists(signupEmail);
+      }
+    });
+
+    // Check email existence with live validation
+    document.getElementById('email').addEventListener('blur', (e) => {
+      const email = e.target.value;
+      if (email) {
+        checkEmailExists(email);
+      }
+    });
+
+    function checkEmailExists(email) {
+      fetch('/api/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+      .then(res => res.json())
+      .then(data => {
+        const messageDiv = document.getElementById('message');
+        if (data.exists) {
+          console.log('[EMAIL CHECK] Email already exists, user should login');
+          messageDiv.className = 'message error';
+          messageDiv.textContent = data.message;
+          messageDiv.style.display = 'block';
+          // Hide the signup form message after 2 seconds and redirect
+          setTimeout(() => {
+            localStorage.setItem('loginEmail', email);
+            window.location.href = '/login';
+          }, 2000);
+        } else {
+          messageDiv.style.display = 'none';
+        }
+      })
+      .catch(err => console.log('[EMAIL CHECK ERROR]', err));
+    }
+
+    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const fullname = document.getElementById('fullname').value;
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      const messageDiv = document.getElementById('message');
+
+      // Validation checks
+      if (!fullname || !email || !password || !confirmPassword) {
+        messageDiv.className = 'message error';
+        messageDiv.textContent = 'All fields are required!';
+        messageDiv.style.display = 'block';
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        messageDiv.className = 'message error';
+        messageDiv.textContent = 'Passwords do not match!';
+        messageDiv.style.display = 'block';
+        return;
+      }
+
+      if (password.length < 6) {
+        messageDiv.className = 'message error';
+        messageDiv.textContent = 'Password must be at least 6 characters!';
+        messageDiv.style.display = 'block';
+        return;
+      }
+
+      try {
+        console.log('[SIGNUP FLOW] Attempting to register new user...');
+        const response = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fullname, email, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          messageDiv.className = 'message success';
+          messageDiv.textContent = 'Sign up successful! Logging in automatically...';
+          messageDiv.style.display = 'block';
+          // Auto-login after successful signup
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          console.log(`[SIGNUP SUCCESS] User registered and auto-logged in: ${email}`);
+          setTimeout(() => {
+            window.location.href = '/dashboard';
+          }, 1500);
+        } else {
+          messageDiv.className = 'message error';
+          messageDiv.textContent = data.message || 'Sign up failed';
+          messageDiv.style.display = 'block';
+          console.log(`[SIGNUP FAIL] ${data.message}`);
+        }
+      } catch (error) {
+        messageDiv.className = 'message error';
+        messageDiv.textContent = 'Error: ' + error.message;
+        messageDiv.style.display = 'block';
+        console.log('[SIGNUP ERROR]', error);
+      }
+    });
+  </script>
+</body>
+</html>
